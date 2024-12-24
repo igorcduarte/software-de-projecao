@@ -1,139 +1,175 @@
 import tkinter as tk
-from tkinter import filedialog, messagebox
+from tkinter import filedialog, messagebox, ttk
 from projecao import projetar_estrofes
 
-# Janela principal
-def criar_janela_principal():
-    letras_salvas = {}  # Dicionário para armazenar as letras com seus nomes
-    tema_claro = True
+# Cor base para o tema
+COR_BASE = "#27115A"
+COR_CONTRASTE = "#FFFFFF"
+COR_BOTAO = "#3D2C8D"
+COR_TEXTO = "#E0E0E0"
 
-    def alternar_tema():
-        nonlocal tema_claro
-        tema_claro = not tema_claro
-        cores = {
-            True: {"bg": "#ffffff", "fg": "#000000"},
-            False: {"bg": "#333333", "fg": "#ffffff"},
-        }
+class ProjecaoApp:
+    def __init__(self):
+        self.letras_salvas = {}
+        self.janela = tk.Tk()
+        self.janela.title("Projeção de Letras")
+        self.janela.geometry("1000x800")
+        self.janela.resizable(True, True)
+        self.janela.minsize(800, 600)
+        self.janela.configure(bg=COR_BASE)
+        
+        self.criar_interface()
 
-        tema = cores[tema_claro]
-        janela.config(bg=tema["bg"])
-        frame_letras.config(bg=tema["bg"])
-        frame_editor.config(bg=tema["bg"])
-        barra_ferramentas.config(bg=tema["bg"])
+    def criar_interface(self):
+        # Divisão principal
+        self.frame_principal = tk.PanedWindow(self.janela, orient=tk.HORIZONTAL, bg=COR_BASE)
+        self.frame_principal.pack(fill=tk.BOTH, expand=True)
 
-        lista_letras.config(bg=tema["bg"], fg=tema["fg"])
-        letras_texto.config(bg=tema["bg"], fg=tema["fg"])
-        nome_entrada.config(bg=tema["bg"], fg=tema["fg"])
+        # Aba lateral para letras salvas
+        self.frame_letras = tk.Frame(self.frame_principal, bg=COR_BASE)
+        self.frame_principal.add(self.frame_letras, width=200)
 
-    def abrir_janela_criacao():
-        janela_criacao = tk.Toplevel()
+        # Label para lista de letras
+        self.label_lista = tk.Label(self.frame_letras, text="Letras Salvas", bg=COR_BASE, 
+                                  fg=COR_CONTRASTE, font=("Arial", 14, "bold"))
+        self.label_lista.pack(pady=5)
+
+        # Lista de letras
+        self.lista_letras = tk.Listbox(self.frame_letras, bg=COR_BASE, fg=COR_TEXTO, 
+                                     selectbackground=COR_BOTAO, font=("Arial", 12))
+        self.lista_letras.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=5, pady=5)
+        self.lista_letras.bind('<<ListboxSelect>>', self.mostrar_letra_selecionada)
+
+        # Botões
+        self.btn_projetar = tk.Button(self.frame_letras, text="Projetar", 
+                                    command=self.projetar_selecionada, bg=COR_BOTAO, 
+                                    fg=COR_CONTRASTE, font=("Arial", 12))
+        self.btn_projetar.pack(side=tk.BOTTOM, fill=tk.X, padx=5, pady=5)
+
+        self.btn_excluir = tk.Button(self.frame_letras, text="Excluir Letra", 
+                                   command=self.excluir_letra, bg=COR_BOTAO, 
+                                   fg=COR_CONTRASTE, font=("Arial", 12))
+        self.btn_excluir.pack(side=tk.BOTTOM, fill=tk.X, padx=5, pady=5)
+
+        self.btn_criar = tk.Button(self.frame_letras, text="Criar Letra", 
+                                 command=self.abrir_janela_criacao, bg=COR_BOTAO, 
+                                 fg=COR_CONTRASTE, font=("Arial", 12))
+        self.btn_criar.pack(side=tk.BOTTOM, fill=tk.X, padx=5, pady=5)
+
+        # Área de visualização
+        self.frame_visualizacao = tk.Frame(self.frame_principal, bg=COR_BASE)
+        self.frame_principal.add(self.frame_visualizacao)
+
+        # Label para título da visualização
+        self.label_visualizacao = tk.Label(self.frame_visualizacao, text="Visualização da Letra", 
+                                         bg=COR_BASE, fg=COR_CONTRASTE, font=("Arial", 14, "bold"))
+        self.label_visualizacao.pack(pady=5)
+
+        # Texto para visualização
+        self.texto_visualizacao = tk.Text(self.frame_visualizacao, wrap=tk.WORD, 
+                                        bg=COR_BASE, fg=COR_TEXTO, font=("Arial", 12))
+        self.texto_visualizacao.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+
+    def mostrar_letra_selecionada(self, event=None):
+        try:
+            if self.lista_letras.curselection():
+                selecionado = self.lista_letras.get(self.lista_letras.curselection())
+                if selecionado in self.letras_salvas:
+                    self.texto_visualizacao.delete(1.0, tk.END)
+                    self.texto_visualizacao.insert(1.0, self.letras_salvas[selecionado])
+        except Exception as e:
+            print(f"Erro ao mostrar letra: {e}")
+
+    def atualizar_lista_letras(self):
+        self.lista_letras.delete(0, tk.END)
+        for nome in self.letras_salvas:
+            self.lista_letras.insert(tk.END, nome)
+
+    def projetar_selecionada(self):
+        try:
+            selecionado = self.lista_letras.get(self.lista_letras.curselection())
+            projetar_estrofes(self.letras_salvas[selecionado])
+        except tk.TclError:
+            messagebox.showwarning("Aviso", "Nenhuma letra foi selecionada para projeção!")
+
+    def excluir_letra(self):
+        try:
+            selecionado = self.lista_letras.get(self.lista_letras.curselection())
+            del self.letras_salvas[selecionado]
+            self.atualizar_lista_letras()
+            self.texto_visualizacao.delete(1.0, tk.END)
+            messagebox.showinfo("Sucesso", f"Letra '{selecionado}' excluída com sucesso!")
+        except tk.TclError:
+            messagebox.showwarning("Aviso", "Nenhuma letra foi selecionada para exclusão!")
+
+    def abrir_janela_criacao(self):
+        janela_criacao = tk.Toplevel(self.janela)
         janela_criacao.title("Criar Letra")
-        janela_criacao.geometry("1000x800")  # Tamanho igual à janela principal
-        janela_criacao.minsize(800, 600)
+        janela_criacao.geometry("1000x800")
         janela_criacao.resizable(True, True)
+        janela_criacao.minsize(800, 600)
+        janela_criacao.configure(bg=COR_BASE)
+        janela_criacao.transient(self.janela)
+        janela_criacao.grab_set()
 
-        def importar_letras():
+        def salvar_letra():
+            nome = nome_entrada.get()
+            if not nome:
+                messagebox.showwarning("Aviso", "Insira um nome para salvar a letra!")
+                return
+            
+            self.letras_salvas[nome] = texto_letra.get(1.0, tk.END).strip()
+            messagebox.showinfo("Sucesso", f"Letra '{nome}' salva com sucesso!")
+            self.atualizar_lista_letras()
+            janela_criacao.destroy()
+
+        def importar_letra():
             arquivo = filedialog.askopenfilename(
                 title="Selecione o arquivo de letras",
                 filetypes=[("Arquivos de Texto", "*.txt")]
             )
             if arquivo:
                 with open(arquivo, 'r', encoding='utf-8') as f:
-                    letras_texto.insert(tk.END, f.read())
+                    texto_letra.delete(1.0, tk.END)
+                    texto_letra.insert(tk.END, f.read())
 
-        def salvar_letras():
-            nome = nome_entrada.get()
-            if not nome:
-                messagebox.showwarning("Aviso", "Insira um nome para salvar a letra!")
-                return
+        def organizar_estrofes():
+            texto = texto_letra.get(1.0, tk.END).strip()
+            linhas = texto.split("\n")
+            estrofes = ["\n".join(linhas[i:i+4]) for i in range(0, len(linhas), 4)]
+            texto_letra.delete(1.0, tk.END)
+            texto_letra.insert(tk.END, "\n\n".join(estrofes))
 
-            letras_salvas[nome] = letras_texto.get(1.0, tk.END).strip()
-            atualizar_lista_letras()
-            messagebox.showinfo("Sucesso", f"Letra '{nome}' salva com sucesso!")
-
-        def atualizar_lista_letras():
-            lista_letras.delete(0, tk.END)
-            for nome in letras_salvas:
-                lista_letras.insert(tk.END, nome)
-
-        frame_criacao = tk.Frame(janela_criacao)
-        frame_criacao.pack(fill=tk.BOTH, expand=True)
-
-        nome_entrada = tk.Entry(frame_criacao, font=("Arial", 14))
-        nome_entrada.pack(fill=tk.X, padx=5, pady=5)
+        # Nome da letra
+        nome_entrada = tk.Entry(janela_criacao, font=("Arial", 14), bg=COR_BOTAO, fg=COR_CONTRASTE)
+        nome_entrada.pack(fill=tk.X, padx=10, pady=10)
         nome_entrada.insert(0, "Nome da Letra")
 
-        letras_texto = tk.Text(frame_criacao, wrap=tk.WORD, font=("Arial", 14))
-        letras_texto.pack(expand=True, fill=tk.BOTH, padx=10, pady=10)
+        # Texto da letra
+        texto_letra = tk.Text(janela_criacao, wrap=tk.WORD, font=("Arial", 14), 
+                            bg=COR_BASE, fg=COR_TEXTO, insertbackground=COR_CONTRASTE)
+        texto_letra.pack(expand=True, fill=tk.BOTH, padx=10, pady=10)
 
-        barra_ferramentas = tk.Frame(frame_criacao)
+        # Barra de ferramentas
+        barra_ferramentas = tk.Frame(janela_criacao, bg=COR_BASE)
         barra_ferramentas.pack(side=tk.BOTTOM, fill=tk.X)
 
-        btn_importar = tk.Button(barra_ferramentas, text="Importar Letra", command=importar_letras)
+        btn_importar = tk.Button(barra_ferramentas, text="Importar", command=importar_letra, 
+                               bg=COR_BOTAO, fg=COR_CONTRASTE, font=("Arial", 12))
         btn_importar.pack(side=tk.LEFT, padx=5, pady=5)
 
-        btn_salvar = tk.Button(barra_ferramentas, text="Salvar Letra", command=salvar_letras)
+        btn_organizar = tk.Button(barra_ferramentas, text="Organizar Estrofes", 
+                                command=organizar_estrofes, bg=COR_BOTAO, 
+                                fg=COR_CONTRASTE, font=("Arial", 12))
+        btn_organizar.pack(side=tk.LEFT, padx=5, pady=5)
+
+        btn_salvar = tk.Button(barra_ferramentas, text="Salvar", command=salvar_letra, 
+                             bg=COR_BOTAO, fg=COR_CONTRASTE, font=("Arial", 12))
         btn_salvar.pack(side=tk.LEFT, padx=5, pady=5)
 
-    def atualizar_lista_letras():
-        lista_letras.delete(0, tk.END)
-        for nome in letras_salvas:
-            lista_letras.insert(tk.END, nome)
+    def executar(self):
+        self.janela.mainloop()
 
-    def exibir_letra(event):
-        try:
-            selecionado = lista_letras.get(lista_letras.curselection())
-            letras_texto.delete(1.0, tk.END)
-            letras_texto.insert(tk.END, letras_salvas[selecionado])
-        except tk.TclError:
-            messagebox.showwarning("Aviso", "Nenhuma letra foi selecionada!")
-
-    def projetar_selecionada():
-        try:
-            selecionado = lista_letras.get(lista_letras.curselection())
-            projetar_estrofes(letras_salvas[selecionado])
-        except tk.TclError:
-            messagebox.showwarning("Aviso", "Nenhuma letra foi selecionada para projeção!")
-
-    janela = tk.Tk()
-    janela.title("Projeção de Letras")
-    janela.geometry("1000x800")
-    janela.minsize(800, 600)
-    janela.resizable(True, True)
-
-    # Divisão principal
-    frame_principal = tk.PanedWindow(janela, orient=tk.HORIZONTAL)
-    frame_principal.pack(fill=tk.BOTH, expand=True)
-
-    # Aba lateral para letras salvas
-    frame_letras = tk.Frame(frame_principal, bg="#f0f0f0")
-    frame_principal.add(frame_letras, width=200)
-
-    lista_letras = tk.Listbox(frame_letras)
-    lista_letras.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=5, pady=5)
-    lista_letras.bind("<<ListboxSelect>>", exibir_letra)
-
-    btn_projetar = tk.Button(frame_letras, text="Projetar", command=projetar_selecionada)
-    btn_projetar.pack(side=tk.BOTTOM, padx=5, pady=5)
-
-    # Área de edição de letras
-    frame_editor = tk.Frame(frame_principal)
-    frame_principal.add(frame_editor)
-
-    nome_entrada = tk.Entry(frame_editor, font=("Arial", 14))
-    nome_entrada.pack(fill=tk.X, padx=5, pady=5)
-    nome_entrada.insert(0, "Nome da Letra")
-
-    letras_texto = tk.Text(frame_editor, wrap=tk.WORD, font=("Arial", 14))
-    letras_texto.pack(expand=True, fill=tk.BOTH, padx=10, pady=10)
-
-    barra_ferramentas = tk.Frame(frame_editor)
-    barra_ferramentas.pack(side=tk.BOTTOM, fill=tk.X)
-
-    btn_criar_letra = tk.Button(barra_ferramentas, text="Criar Letra", command=abrir_janela_criacao)
-    btn_criar_letra.pack(side=tk.LEFT, padx=5, pady=5)
-
-    btn_alternar_tema = tk.Button(barra_ferramentas, text="Alternar Tema", command=alternar_tema)
-    btn_alternar_tema.pack(side=tk.LEFT, padx=5, pady=5)
-
-    janela.mainloop()
+if __name__ == "__main__":
+    app = ProjecaoApp()
+    app.executar()
